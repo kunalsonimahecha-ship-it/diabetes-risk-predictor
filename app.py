@@ -4,6 +4,7 @@ import numpy as np
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
 
 # Load and train model
 df = pd.read_csv('diabetes.csv')
@@ -13,10 +14,13 @@ y = df['Outcome']
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 scaler = StandardScaler()
-X_train_scaled = scaler.fit_transform(X_train)
+X_train_scaled = pd.DataFrame(scaler.fit_transform(X_train), columns=X.columns)
 
-model = LogisticRegression(max_iter=1000)
-model.fit(X_train_scaled, y_train)
+lr_model = LogisticRegression(max_iter=1000)
+lr_model.fit(X_train_scaled, y_train)
+
+rf_model = RandomForestClassifier(n_estimators=100, random_state=42)
+rf_model.fit(X_train_scaled, y_train)
 
 # App UI
 st.title("Diabetes Risk Predictor")
@@ -31,11 +35,21 @@ bmi = st.slider("BMI", 18.2, 67.1, 32.0)
 dpf = st.slider("Diabetes Pedigree Function", 0.078, 2.42, 0.47)
 age = st.slider("Age", 21, 81, 33)
 
+# Let user choose
+model_choice = st.selectbox("Choose Model", 
+                             ["Logistic Regression", "Random Forest"])
+
+
 if st.button("Predict"):
-    input_data = np.array([[pregnancies, glucose, bp, skinthickness,
-                            insulin, bmi, dpf, age]])
+    input_data = pd.DataFrame([[pregnancies, glucose, bp, skinthickness,
+                            insulin, bmi, dpf, age]], 
+                            columns=X.columns)
     input_scaled = scaler.transform(input_data)
-    prob = model.predict_proba(input_scaled)[:,1]
+    
+    if model_choice == "Logistic Regression":
+        prob = lr_model.predict_proba(input_scaled)[:,1]
+    else:
+        prob = rf_model.predict_proba(input_scaled)[:,1]
     
     if prob >= 0.4:
         st.error(f"High Diabetes Risk — Probability: {prob[0]:.2%}")
